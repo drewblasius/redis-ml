@@ -33,3 +33,15 @@ typedef struct {
     Kernel *k;
     int clen;
 } svm; 
+
+// functions
+
+double __radial_product(double *features, svm *v);
+
+double __euclidean_product(double *features, svm *v);
+
+double __polynomial_product(double *features, svm *v);
+
+double svmPredict(double *features, svm *v);
+
+double svmClassify(double *features, svm *v);
