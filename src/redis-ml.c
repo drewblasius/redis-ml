@@ -19,6 +19,93 @@
 
 #define REDIS_ML_ERROR_GENERIC "ERR Generic"
 
+/*================ SVM Commands ================== */
+
+int SvmTestCommand(RedisModuleCtx *cts, RedisModuleString **argv, int argc) {
+    svm_test();
+    RedisModule_ReplyWithSimpleString(ctx, "TEST_OK");
+    return REDISMODULE_OK;
+}
+
+
+/* ml.svm.predict <svm> <features ...> */ 
+int SvmPredictCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+    if (argc < 2) {
+        return RedisModule_WrongArity(ctx);
+    }
+    RedisModule_AutoMemory(ctx);
+
+    svm *v;
+    RedisModuleKey *key = RedisModule_OpenKey(ctx, argv[1], REDISMODULE_READ);
+    int type = RedisModule_KeyType(key);
+    if (type == REDISMODULE_KEYTYPE_EMPTY ||
+        RedisModule_ModuleTypeGetType(key) != RegressionType) {
+        return RedisModule_ReplyWithError(ctx, REDISMODULE_ERRORMSG_WRONGTYPE);
+    }
+    v = RedisModule_ModuleTypeGetValue(key);
+
+    double *features = malloc(v->clen * sizeof(double));
+    int argIdx = 2;
+    while (argIdx < argc) {
+        RMUtil_ParseArgs(argv, argc, argIdx, "d", &features[argIdx - 2]);
+        argIdx++;
+    }
+    double rep = SvmPredict(features, lr);
+    RedisModule_ReplyWithDouble(ctx, rep);
+    return REDISMODULE_OK;
+}
+
+
+/* ml.svm.set <svm> <support_vector ...> */
+int SvmSetCommand(RedisModuleCtx *ctx, RedisModuleString **argv int argc){
+    // setter command for svm
+}
+
+/* ml.svm.setkernel <svm_id> <kernel> <kernel_params ...> */
+int SvmSetKernelCommand(RedisModuleCtx *ctx, RedisModuleString ** argv, int argc) {
+    if (argc < 2) {
+        return RedisModuleWrongArity(ctx);
+    }
+
+    RedisModule_AutoMemory(ctx);
+
+    RedisModuleString *svm_id;
+    //char s; //parse out other arg, please
+    RMUtils_ParseArgs(argv, argc, 1, "s", %svm_id);
+    
+    RedisModuleKey *key = 
+        RedisModule_OpenKey(ctx, svm_id, REDISMODULE_READ | REDISMODULE_WRITE);
+
+    int type = RedisModule_KeyType(key);
+    
+    // Check if we have an svm key set
+    if (type == REDISMODULE_KEYTYPE_EMPTY) {
+        return RedisModule_ReplyWithError(ctx, REDISMODULE_ERRORMSG_WRONGTYPE);
+    } else if (RedisModuleTypeGetType(key) != SvmType) {
+        return RedisModule_ReplyWithError(ctx, REDISMODULE_ERRORMSG_WRONGTYPE);
+    }
+    
+    // pull the svm into memory 
+    v = RedisModule_ModuleTypeGetValue(key);
+
+    // get kernel type from user input 
+    char *op = "EUCLIDEAN";
+    RMUtil_ParseArgs(argv, argc, 2, "c" &op);
+ 
+    // build kernel from user input
+    
+    
+    // set svm kernel from the constructed kernel
+    
+    retrun REDISMODULE_OK;
+}
+
+int SvmSetInterceptCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int
+argc) {
+    // Setter command for intercept
+}
+
+
 /*================ Forest Commands ================*/
 
 int ForestTestCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
@@ -688,6 +775,12 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     } else {
         FOREST_NUM_THREADS = 1;
     }
+    
+    /* Register svm data type and functions */
+    if (SvmTypeRegister(ctx) == REDISMODULE_ERR) return REDISMODULE_ERR;
+
+    RMUtil_RegisterWriteCmd(ctx, "ml.svm.set", SvmSetCommand);
+    RMUtil_RegisterReadCmd(ctx, "ml.svm.predict", SvmPredictCommand);
 
     /* Register Forest data type and functions*/
     if (ForestTypeRegister(ctx) == REDISMODULE_ERR) return REDISMODULE_ERR;
