@@ -36,7 +36,7 @@ double __polynomial_product (double *features, svm *v) {
 }
 
 // generic prediction method for SVM
-double svmPredict(double *features, svm *v) {
+double SvmPredict(double *features, svm *v) {
     if (v->k->ktype == EUCLIDEAN) {
         double p = __euclidean_product(features, v);
     } else if (v->k->ktype == RADIAL) {
@@ -49,7 +49,7 @@ double svmPredict(double *features, svm *v) {
     return p + v->intercept;
 }
 
-int svmClassify(double *features, svm *v) {
+int SvmClassify(double *features, svm *v) {
     return (svmPredict(features, v) >= 0);
 }    
  

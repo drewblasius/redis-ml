@@ -42,6 +42,6 @@ double __euclidean_product(double *features, svm *v);
 
 double __polynomial_product(double *features, svm *v);
 
-double svmPredict(double *features, svm *v);
+double SvmPredict(double *features, svm *v);
 
-double svmClassify(double *features, svm *v);
+double SvmClassify(double *features, svm *v);
