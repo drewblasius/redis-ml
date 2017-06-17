@@ -5,34 +5,32 @@
 #include <math.h>
 
 #include "feature-vec.h"
-#include "forest.h"
+#include "svm.h"
 #include "util/logging.h"
 
-// We probably need to consider more than one kernel type --
-// probably polynomial and radial to start, as they're the most popular kernel available for svms
 
 // radial kernel
 double __radial_product (double *features, svm *v) {
     double p = 0;
     for (int i = 0; i < v->clen; i++) {
-        p += pow(v->svec[i] - features[i]);
+        p += pow(v->svector[i] - features[i]);
     }
-    return exp(sqrt(p) / sigma);
+    return exp(-sqrt(p) / v->kparams[0] / 2);
 }
 
 // euclidean kernel
 double __euclidean_product (double *features, svm *v) {
     double p = 0;
     for (int i = 0; i < v->clen; i++) {
-        p += features[i] + v->svec[i];
+        p += features[i] + v->svector[i];
     }
     return p;
 }
 
 // polynomial kernel
 double __polynomial_product (double *features, svm *v) {
-    double p = __euclidean_product(features, v) + v->k->offset;
-    return pow(p, v->k->p);
+    double p = __euclidean_product(features, v) + v->kparams[0];
+    return pow(p, v->kparams[1]);
 }
 
 // generic prediction method for SVM
@@ -49,6 +47,7 @@ double SvmPredict(double *features, svm *v) {
     return p + v->intercept;
 }
 
+// not sure if this will ever be used 
 int SvmClassify(double *features, svm *v) {
     return (svmPredict(features, v) >= 0);
 }    

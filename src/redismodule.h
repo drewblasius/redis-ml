@@ -64,6 +64,7 @@
 
 /* Error messages. */
 #define REDISMODULE_ERRORMSG_WRONGTYPE "WRONGTYPE Operation against a key holding the wrong kind of value"
+#define REDISMODULE_ERRORMSG_WRONGKERNEL "WRONGKERNEL Unsuppored kernel passed" 
 
 #define REDISMODULE_POSITIVE_INFINITE (1.0/0.0)
 #define REDISMODULE_NEGATIVE_INFINITE (-1.0/0.0)

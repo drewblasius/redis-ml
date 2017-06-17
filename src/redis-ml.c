@@ -13,6 +13,8 @@
 #include "forest-type.h"
 #include "regression-type.h"
 #include "util/thpool.h"
+#include "svm.h"
+#include "svm-type.h"
 
 #define RLMODULE_NAME "REDIS-ML"
 #define RLMODULE_VERSION "1.0.0"
@@ -39,7 +41,7 @@ int SvmPredictCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     RedisModuleKey *key = RedisModule_OpenKey(ctx, argv[1], REDISMODULE_READ);
     int type = RedisModule_KeyType(key);
     if (type == REDISMODULE_KEYTYPE_EMPTY ||
-        RedisModule_ModuleTypeGetType(key) != RegressionType) {
+        RedisModule_ModuleTypeGetType(key) != SvmType) {
         return RedisModule_ReplyWithError(ctx, REDISMODULE_ERRORMSG_WRONGTYPE);
     }
     v = RedisModule_ModuleTypeGetValue(key);
@@ -56,10 +58,46 @@ int SvmPredictCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 }
 
 
-/* ml.svm.set <svm> <support_vector ...> */
+/* ml.svm.set <svm> <intercept> <support_vector ...> */
 int SvmSetCommand(RedisModuleCtx *ctx, RedisModuleString **argv int argc){
-    // setter command for svm
-}
+    if (argc < 4) {
+        return RedisModule_WrongArity(ctx);
+    }
+    RedisModule_AutoMemory(ctx);
+
+    RedisModuleString *id;
+    RMUtil_ParseArgs(argv, argc, 1, "s", &id);
+    RedisModuleKey *key =
+            RedisModule_OpenKey(ctx, id, REDISMODULE_READ | REDISMODULE_WRITE);
+
+    int type = RedisModule_KeyType(key);
+    if (type != REDISMODULE_KEYTYPE_EMPTY &&
+        RedisModule_ModuleTypeGetType(key) != SvmType) {
+        return RedisModule_ReplyWithError(ctx, REDISMODULE_ERRORMSG_WRONGTYPE);
+    }
+
+    svm *v = NULL;
+    if (type == REDISMODULE_KEYTYPE_EMPTY) {
+        v = malloc(sizeof(svm));
+        v->svector = NULL;
+        v->kparams = NULL;
+        RedisModule_ModuleTypeSetValue(key, SvmType, lr);
+    } else {
+        v = RedisModule_ModuleTypeGetValue(key);
+    } 
+
+    v->clen = argc - 2;
+    v->coefficients = realloc(v->svector, v->clen * sizeof(double));
+    RMUtil_ParseArgs(argv, argc, 2, "d", &v->intercept);
+    int argIdx = 3;
+    while (argIdx < argc) {
+        RMUtil_ParseArgs(argv, argc, argIdx, "d", &v->svector[argIdx - 3]);
+        argIdx++;
+    }
+    RedisModule_ReplyWithSimpleString(ctx, "OK");
+    return REDISMODULE_OK;
+} 
+
 
 /* ml.svm.setkernel <svm_id> <kernel> <kernel_params ...> */
 int SvmSetKernelCommand(RedisModuleCtx *ctx, RedisModuleString ** argv, int argc) {
@@ -70,7 +108,6 @@ int SvmSetKernelCommand(RedisModuleCtx *ctx, RedisModuleString ** argv, int argc
     RedisModule_AutoMemory(ctx);
 
     RedisModuleString *svm_id;
-    //char s; //parse out other arg, please
     RMUtils_ParseArgs(argv, argc, 1, "s", %svm_id);
     
     RedisModuleKey *key = 
@@ -89,20 +126,25 @@ int SvmSetKernelCommand(RedisModuleCtx *ctx, RedisModuleString ** argv, int argc
     v = RedisModule_ModuleTypeGetValue(key);
 
     // get kernel type from user input 
+    // todo -- will this mess something up if i read in 
+    // a string of a different length?
     char *op = "EUCLIDEAN";
     RMUtil_ParseArgs(argv, argc, 2, "c" &op);
  
     // build kernel from user input
-    
-    
-    // set svm kernel from the constructed kernel
-    
-    retrun REDISMODULE_OK;
-}
-
-int SvmSetInterceptCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int
-argc) {
-    // Setter command for intercept
+    if (strcmp(op, "EUCLIDEAN") == 1) {
+        v->k = EUCLIDEAN;               
+    } else if (strcmp(op, "RADIAL") == 1) {
+        v->k = RADIAL;               
+    } else if (strcmp(op, "POLYNOMIAL") == 1){
+        v->k = POLYNOMIAL;
+    } else {
+        return RedisModule_ReplyWithError(ctx, REDIS_ML_SVM_ERROR_WRONG_KERNEL_TYPE);
+        //return REDISMODULE_ERROMSG_WRONGKERNEL
+    }
+     
+    RedisModule_ReplyWithSimpleString(ctx, "OK");
+    return REDISMODULE_OK;
 }
 
 
@@ -510,6 +552,7 @@ int MatrixMultiplyCommand(RedisModuleCtx *ctx, RedisModuleString **argv,
     RedisModuleKey *key = RedisModule_OpenKey(ctx, argv[1], REDISMODULE_READ);
     int type = RedisModule_KeyType(key);
     if (type == REDISMODULE_KEYTYPE_EMPTY ||
+
         RedisModule_ModuleTypeGetType(key) != MatrixType) {
         return RedisModule_ReplyWithError(ctx, REDISMODULE_ERRORMSG_WRONGTYPE);
     }
@@ -780,6 +823,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     if (SvmTypeRegister(ctx) == REDISMODULE_ERR) return REDISMODULE_ERR;
 
     RMUtil_RegisterWriteCmd(ctx, "ml.svm.set", SvmSetCommand);
+    RMUtil_RegisterWriteCmd(ctx, "ml.svm.setkernel", SvmSetKernelCommand); 
     RMUtil_RegisterReadCmd(ctx, "ml.svm.predict", SvmPredictCommand);
 
     /* Register Forest data type and functions*/

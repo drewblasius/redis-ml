@@ -1,11 +1,3 @@
-/* TO DO:
-  [ ] kernel enum
-  [ ] proper header setup
-  [ ] constant defs
-  [ ] integration
-  [ ] unit tests
-*/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,19 +11,26 @@ typedef enum {
     RADIAL,
 } KernelType;
 
-// Struct for kernel and params
-// (Should order be an array for other types of kerenels)?
-typedef struct {
-    kernelType *ktype;
-    double order;
-} Kernel
+
+// kparams has the following entries
+
+/* EUCLIDEAN:
+ kparams[0] : 0 
+   POLYNOMIAL:
+ kparams[0] : <offset for kernel> 
+ kparams[1] : <order of kernel>
+   RADIAL
+ kparams[0] : <sigma>  
+*/
 
 // all data needed for uniquely specifying and svm 
 typedef struct {
     double *svector;
     double intercept;
-    Kernel *k;
+    enum KernelType k;
+    double *kparams; 
     int clen;
+    int plen; // length of param vector
 } svm; 
 
 // functions
