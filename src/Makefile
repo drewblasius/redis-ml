@@ -42,6 +42,9 @@ matrix.o: matrix.h
 matrix-type.o: matrix-type.h
 kmeans.o: kmeans.h
 kmeans-type.o: kmeans-type.h
+svm.o: svm.h
+svm-type.o: svm-type.h
+
 
 .PHONY: test
 test:
